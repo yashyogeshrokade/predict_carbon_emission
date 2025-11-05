@@ -1,168 +1,122 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Building Energy & Carbon Details</title>
-  <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
-</head>
+<script>
+  function goBack() {
+    window.location.href = 'index.html';
+  }
 
-<body class="bg-gray-100 font-sans">
-  <div class="bg-red-800 text-white text-3xl font-bold text-center py-4">
-    Building Energy & Carbon Details
-  </div>
-
-  <div class="grid grid-cols-2 gap-10 mt-10 px-10">
-    <!-- Carbon Emission Card -->
-    <div class="bg-white p-10 rounded-2xl shadow-lg text-center">
-      <h2 id="carbonTitle" class="text-2xl font-semibold text-green-800 mb-6"></h2>
-      <canvas id="carbonChart" height="350"></canvas>
-      <p id="carbonInfo" class="text-lg text-gray-700 mt-4"></p>
-    </div>
-
-    <!-- Energy Consumption Card -->
-    <div class="bg-white p-10 rounded-2xl shadow-lg text-center">
-      <h2 id="energyTitle" class="text-2xl font-semibold text-red-800 mb-6"></h2>
-      <canvas id="energyChart" height="350"></canvas>
-      <p id="energyInfo" class="text-lg text-gray-700 mt-4"></p>
-    </div>
-  </div>
-
-  <!-- Buttons -->
-  <div class="flex justify-center mt-10 space-x-4">
-    <button onclick="goBack()" class="bg-red-800 hover:bg-red-700 text-white font-semibold py-2 px-4 rounded">
-      ← Back
-    </button>
-    <button onclick="goToForecast()" class="bg-green-700 hover:bg-green-600 text-white font-semibold py-2 px-4 rounded">
-      Forecast →
-    </button>
-  </div>
-
-  <script>
-    function goBack() {
-      window.location.href = 'index.html';
-    }
-
-    function goToForecast() {
-      const urlParams = new URLSearchParams(window.location.search);
-      const building = urlParams.get('building');
-      const url = `forecast.html?building=${encodeURIComponent(building)}`;
-      window.location.href = url;
-    }
-
+  function goToForecast() {
     const urlParams = new URLSearchParams(window.location.search);
-    const buildingName = urlParams.get('building');
-    const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep"];
+    const building = urlParams.get('building');
+    const url = `forecast.html?building=${encodeURIComponent(building)}`;
+    window.location.href = url;
+  }
 
-    if (buildingName) {
-      document.getElementById("energyTitle").innerText = `${buildingName} - Energy Consumption`;
-      document.getElementById("carbonTitle").innerText = `${buildingName} - Carbon Emission`;
-    }
+  const urlParams = new URLSearchParams(window.location.search);
+  const buildingName = urlParams.get('building');
+  const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep"];
 
-    const normalize = str => str.toLowerCase().replace(/[\s\-\(\)]/g, '');
+  if (buildingName) {
+    document.getElementById("energyTitle").innerText = `${buildingName} - Energy Consumption`;
+    document.getElementById("carbonTitle").innerText = `${buildingName} - Carbon Emission`;
+  }
 
-    // === Load Excel ===
-    fetch('energy_2.xlsx') // ensure your new file is named this
-      .then(response => response.arrayBuffer())
-      .then(data => {
-        const workbook = XLSX.read(data, { type: 'array' });
-        const sheet = workbook.Sheets[workbook.SheetNames[0]];
-        const jsonData = XLSX.utils.sheet_to_json(sheet, { header: 1 });
-        const rows = jsonData.slice(2); // skip header rows
+  const normalize = str => str.toLowerCase().replace(/[\s\-\(\)]/g, '');
 
-        const target = normalize(buildingName);
-        const buildingRow = rows.find(row => normalize(row[1]) === target);
+  // === Load data from Energy_2.xlsx ===
+  fetch('Energy_2.xlsx')
+    .then(response => response.arrayBuffer())
+    .then(data => {
+      const workbook = XLSX.read(data, { type: 'array' });
+      const sheet = workbook.Sheets[workbook.SheetNames[0]];
+      const jsonData = XLSX.utils.sheet_to_json(sheet, { header: 1 });
 
-        if (!buildingRow) {
-          alert("Building not found in Excel!");
-          return;
+      // Data starts from row 3
+      const rows = jsonData.slice(2);
+      const target = normalize(buildingName);
+      const buildingRow = rows.find(row => normalize(row[1]) === target);
+
+      if (!buildingRow) {
+        alert("Building not found in Excel!");
+        return;
+      }
+
+      // Energy columns: C–K = indices 2–10
+      const energyValues = buildingRow.slice(2, 11).map(Number);
+      const totalEnergy = Number(buildingRow[14]) || energyValues.reduce((a, b) => a + (b || 0), 0);
+      const numAC = Number(buildingRow[15]) || 0;
+
+      // === Energy Chart ===
+      const ctxEnergy = document.getElementById('energyChart').getContext('2d');
+      new Chart(ctxEnergy, {
+        type: 'bar',
+        data: {
+          labels: months,
+          datasets: [{
+            label: 'Energy Consumption (kWh)',
+            data: energyValues,
+            backgroundColor: '#ef4444',
+            borderColor: '#991b1b',
+            borderWidth: 1,
+            borderRadius: 6
+          }]
+        },
+        options: {
+          scales: { y: { beginAtZero: true } },
+          plugins: {
+            legend: { display: false },
+            title: { display: true, text: 'Monthly Energy Consumption (kWh)', font: { size: 16 } }
+          }
         }
-
-        // Columns: C–K => monthly energy (Jan–Sep)
-        const energyValues = buildingRow.slice(2, 11).map(Number);
-        const totalEnergy = buildingRow[14] ? Number(buildingRow[14]) : energyValues.reduce((a, b) => a + (b || 0), 0);
-        const numAC = Number(buildingRow[15]) || 0;
-
-        // === Energy Chart ===
-        const maxEnergy = Math.max(...energyValues);
-        const yMaxEnergy = Math.ceil(maxEnergy * 1.2);
-        const ctxEnergy = document.getElementById('energyChart').getContext('2d');
-        new Chart(ctxEnergy, {
-          type: 'bar',
-          data: {
-            labels: months,
-            datasets: [{
-              label: 'Energy Consumption (kWh)',
-              data: energyValues,
-              backgroundColor: '#ef4444',
-              borderColor: '#991b1b',
-              borderWidth: 1,
-              borderRadius: 6
-            }]
-          },
-          options: {
-            scales: { y: { beginAtZero: true, max: yMaxEnergy } },
-            plugins: {
-              legend: { display: false },
-              title: { display: true, text: 'Monthly Energy Consumption (kWh)', font: { size: 16 } }
-            }
-          }
-        });
-
-        document.getElementById('energyInfo').innerHTML =
-          `<strong>Total Energy:</strong> ${totalEnergy.toLocaleString()} kWh<br>
-           <strong>No. of AC Units:</strong> ${numAC}`;
-
-        // === Carbon Emission Calculation ===
-        const refrigerantPerAC = 2.0;   // kg R-410A per AC
-        const leakageRate = 0.10;       // 10% annual leakage
-        const GWP = 2088;               // Global Warming Potential
-        const gridFactor = 0.75;        // kg CO2 per kWh
-
-        const totalRefrigerant = numAC * refrigerantPerAC;
-        const annualLeakage = totalRefrigerant * leakageRate;
-
-        const carbonValues = energyValues.map(e => {
-          const shareOfYear = e / totalEnergy;
-          const monthlyLeakage = annualLeakage * shareOfYear;
-          const refrigerantCO2 = monthlyLeakage * GWP;
-          const electricityCO2 = e * gridFactor;
-          return refrigerantCO2 + electricityCO2;
-        });
-
-        const totalCarbon = carbonValues.reduce((a, b) => a + b, 0);
-        const maxCarbon = Math.max(...carbonValues);
-        const yMaxCarbon = Math.ceil(maxCarbon * 1.2);
-
-        // === Carbon Chart ===
-        const ctxCarbon = document.getElementById('carbonChart').getContext('2d');
-        new Chart(ctxCarbon, {
-          type: 'bar',
-          data: {
-            labels: months,
-            datasets: [{
-              label: 'Carbon Emission (kg CO₂)',
-              data: carbonValues,
-              backgroundColor: '#10b981',
-              borderColor: '#065f46',
-              borderWidth: 1,
-              borderRadius: 6
-            }]
-          },
-          options: {
-            scales: { y: { beginAtZero: true, max: yMaxCarbon } },
-            plugins: {
-              legend: { display: false },
-              title: { display: true, text: 'Monthly Carbon Emission (kg CO₂)', font: { size: 16 } }
-            }
-          }
-        });
-
-        document.getElementById('carbonInfo').innerHTML =
-          `<strong>Total Carbon Emission:</strong> ${totalCarbon.toLocaleString(undefined, { maximumFractionDigits: 2 })} kg CO₂`;
       });
-  </script>
-</body>
-</html>
+
+      document.getElementById('energyInfo').innerHTML =
+        `<strong>Total Energy:</strong> ${totalEnergy.toLocaleString()} kWh<br>
+         <strong>No. of AC Units:</strong> ${numAC}`;
+
+      // === Carbon Emission Calculation ===
+      const refrigerantPerAC = 2.0;
+      const leakageRate = 0.10;
+      const GWP = 2088;
+      const gridFactor = 0.75;
+
+      const totalRefrigerant = numAC * refrigerantPerAC;
+      const annualLeakage = totalRefrigerant * leakageRate;
+
+      const carbonValues = energyValues.map(e => {
+        const shareOfYear = e / totalEnergy;
+        const monthlyLeakage = annualLeakage * shareOfYear;
+        const refrigerantCO2 = monthlyLeakage * GWP;
+        const electricityCO2 = e * gridFactor;
+        return refrigerantCO2 + electricityCO2;
+      });
+
+      const totalCarbon = carbonValues.reduce((a, b) => a + b, 0);
+
+      // === Carbon Chart ===
+      const ctxCarbon = document.getElementById('carbonChart').getContext('2d');
+      new Chart(ctxCarbon, {
+        type: 'bar',
+        data: {
+          labels: months,
+          datasets: [{
+            label: 'Carbon Emission (kg CO₂)',
+            data: carbonValues,
+            backgroundColor: '#10b981',
+            borderColor: '#065f46',
+            borderWidth: 1,
+            borderRadius: 6
+          }]
+        },
+        options: {
+          scales: { y: { beginAtZero: true } },
+          plugins: {
+            legend: { display: false },
+            title: { display: true, text: 'Monthly Carbon Emission (kg CO₂)', font: { size: 16 } }
+          }
+        }
+      });
+
+      document.getElementById('carbonInfo').innerHTML =
+        `<strong>Total Carbon Emission:</strong> ${totalCarbon.toLocaleString(undefined, { maximumFractionDigits: 2 })} kg CO₂`;
+    });
+</script>
+
