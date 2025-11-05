@@ -18,10 +18,9 @@
       text-align: center;
       margin: 0;
       padding: 0;
+      color: #222;
       height: 100vh;
       overflow-y: auto;
-      color: #222;
-      position: relative;
       filter: brightness(1.15) contrast(1.1) saturate(1.15);
     }
 
@@ -160,7 +159,7 @@
         const totalCO2 = refrigerantCO2 + electricityCO2;
 
         document.getElementById('carbonResult').innerHTML =
-          `<strong>Estimated Carbon Emission:</strong> ${totalCO2.toLocaleString(undefined, { maximumFractionDigits: 2 })} kg CO₂<br><strong>No. of AC Units:</strong> ${numAC}`;
+          `<strong>Estimated Carbon Emission:</strong> ${totalCO2.toLocaleString(undefined, { maximumFractionDigits: 2 })} kg CO₂`;
       } catch (err) {
         document.getElementById('carbonResult').innerText = "⚠ Error reading Excel: " + err.message;
       }
