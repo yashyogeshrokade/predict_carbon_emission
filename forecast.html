@@ -1,85 +1,134 @@
-<script>
-  const API_URL = "https://energy-backend-ie4o.onrender.com/predict";
-  const params = new URLSearchParams(window.location.search);
-  const building = params.get('building') || '';
-  document.getElementById('buildingTitle').innerText = building ? `${building} — Forecast` : 'Forecast';
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Forecast Energy Consumption</title>
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
+</head>
 
-  function goBack() {
-    window.location.href = 'details.html' + (building ? `?building=${encodeURIComponent(building)}` : '');
-  }
+<body class="bg-gray-100 font-sans">
+  <div class="bg-red-800 text-white text-3xl font-bold text-center py-4">
+    Energy Forecast Tool
+  </div>
 
-  const normalize = str => str.toLowerCase().replace(/[\s\-\(\)]/g, '');
+  <div class="max-w-xl mx-auto mt-12 bg-white p-10 rounded-2xl shadow-lg">
+    <h2 id="buildingTitle" class="text-2xl font-semibold text-red-800 mb-4 text-center"></h2>
 
-  document.getElementById('forecastForm').addEventListener('submit', async (e) => {
-    e.preventDefault();
+    <form id="forecastForm" class="space-y-6">
+      <div>
+        <label for="temperature" class="block text-lg font-medium text-gray-700">Temperature (°C)</label>
+        <input id="temperature" type="number" step="0.1" required class="w-full mt-2 p-2 border rounded-lg" />
+      </div>
 
-    const temperature = parseFloat(document.getElementById('temperature').value);
-    const humidity = parseFloat(document.getElementById('humidity').value);
-    const month = document.getElementById('month').value;
+      <div>
+        <label for="humidity" class="block text-lg font-medium text-gray-700">Humidity (%)</label>
+        <input id="humidity" type="number" step="0.1" required class="w-full mt-2 p-2 border rounded-lg" />
+      </div>
 
-    const payload = { building, temperature, humidity, month };
+      <div>
+        <label for="month" class="block text-lg font-medium text-gray-700">Month</label>
+        <select id="month" required class="w-full mt-2 p-2 border rounded-lg">
+          <option value="">Select month</option>
+          <option>January</option><option>February</option><option>March</option>
+          <option>April</option><option>May</option><option>June</option>
+          <option>July</option><option>August</option><option>September</option>
+          <option>October</option><option>November</option><option>December</option>
+        </select>
+      </div>
 
-    document.getElementById('result').innerText = "Predicting...";
-    document.getElementById('carbonResult').innerText = "";
+      <button type="submit" class="w-full bg-red-800 text-white py-2 rounded-lg font-semibold">
+        Predict Energy
+      </button>
+    </form>
 
-    try {
-      const res = await fetch(API_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      });
+    <p id="result" class="mt-6 text-center text-xl font-semibold text-gray-800"></p>
+    <p id="carbonResult" class="mt-3 text-center text-lg font-medium text-green-700"></p>
 
-      const data = await res.json();
-      if (data.success) {
-        const predictedEnergy = parseFloat(data.predicted_energy);
-        document.getElementById('result').innerText =
-          `Predicted Energy Consumption: ${predictedEnergy.toFixed(2)} kWh`;
-        computeCarbonEmission(building, predictedEnergy);
-      } else {
-        document.getElementById('result').innerText = 'Error: ' + data.error;
-      }
-    } catch (err) {
-      document.getElementById('result').innerText = 'Network Error: ' + err.message;
+    <div class="flex justify-center mt-8">
+      <button onclick="goBack()" class="bg-gray-300 text-gray-800 font-semibold py-2 px-6 rounded-lg">
+        ← Back
+      </button>
+    </div>
+  </div>
+
+  <script>
+    const API_URL = "https://energy-backend-ie4o.onrender.com/predict";
+    const params = new URLSearchParams(window.location.search);
+    const building = params.get('building') || '';
+    document.getElementById('buildingTitle').innerText = building ? `${building} — Forecast` : 'Forecast';
+
+    function goBack() {
+      window.location.href = 'details.html' + (building ? `?building=${encodeURIComponent(building)}` : '');
     }
-  });
 
-  async function computeCarbonEmission(buildingName, predictedEnergy) {
-    try {
-      const response = await fetch('Energy_2.xlsx');
-      const arrayBuffer = await response.arrayBuffer();
-      const workbook = XLSX.read(arrayBuffer, { type: 'array' });
-      const sheet = workbook.Sheets[workbook.SheetNames[0]];
-      const jsonData = XLSX.utils.sheet_to_json(sheet, { header: 1 });
-      const rows = jsonData.slice(2);
+    const normalize = str => str.toLowerCase().replace(/[\s\-\(\)]/g, '');
 
-      const target = normalize(buildingName);
-      const buildingRow = rows.find(row => normalize(row[1]) === target);
-      if (!buildingRow) {
-        document.getElementById('carbonResult').innerText = "⚠ Building not found in Excel.";
-        return;
+    document.getElementById('forecastForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const temperature = parseFloat(document.getElementById('temperature').value);
+      const humidity = parseFloat(document.getElementById('humidity').value);
+      const month = document.getElementById('month').value;
+      const payload = { building, temperature, humidity, month };
+
+      document.getElementById('result').innerText = "Predicting...";
+      document.getElementById('carbonResult').innerText = "";
+
+      try {
+        const res = await fetch(API_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+
+        const data = await res.json();
+        if (data.success) {
+          const predictedEnergy = parseFloat(data.predicted_energy);
+          document.getElementById('result').innerText =
+            `Predicted Energy Consumption: ${predictedEnergy.toFixed(2)} kWh`;
+          computeCarbonEmission(building, predictedEnergy);
+        } else {
+          document.getElementById('result').innerText = 'Error: ' + data.error;
+        }
+      } catch (err) {
+        document.getElementById('result').innerText = 'Network Error: ' + err.message;
       }
+    });
 
-      const numAC = Number(buildingRow[15]) || 0;
-      const totalEnergy = Number(buildingRow[14]) || predictedEnergy;
+    async function computeCarbonEmission(buildingName, predictedEnergy) {
+      try {
+        const response = await fetch('Energy_2.xlsx');
+        const arrayBuffer = await response.arrayBuffer();
+        const workbook = XLSX.read(arrayBuffer, { type: 'array' });
+        const sheet = workbook.Sheets[workbook.SheetNames[0]];
+        const jsonData = XLSX.utils.sheet_to_json(sheet, { header: 1 });
+        const rows = jsonData.slice(2);
+        const target = normalize(buildingName);
+        const buildingRow = rows.find(row => normalize(row[1]) === target);
+        if (!buildingRow) {
+          document.getElementById('carbonResult').innerText = "⚠ Building not found in Excel.";
+          return;
+        }
 
-      const refrigerantPerAC = 2.0;
-      const leakageRate = 0.10;
-      const GWP = 2088;
-      const gridFactor = 0.75;
+        const numAC = Number(buildingRow[15]) || 0;
+        const totalEnergy = Number(buildingRow[14]) || predictedEnergy;
 
-      const totalRefrigerant = numAC * refrigerantPerAC;
-      const annualLeakage = totalRefrigerant * leakageRate;
-      const shareOfYear = predictedEnergy / totalEnergy;
-      const monthlyLeakage = annualLeakage * shareOfYear;
-      const refrigerantCO2 = monthlyLeakage * GWP;
-      const electricityCO2 = predictedEnergy * gridFactor;
-      const totalCO2 = refrigerantCO2 + electricityCO2;
+        const refrigerantPerAC = 2.0, leakageRate = 0.10, GWP = 2088, gridFactor = 0.75;
+        const totalRefrigerant = numAC * refrigerantPerAC;
+        const annualLeakage = totalRefrigerant * leakageRate;
+        const shareOfYear = predictedEnergy / totalEnergy;
+        const monthlyLeakage = annualLeakage * shareOfYear;
+        const refrigerantCO2 = monthlyLeakage * GWP;
+        const electricityCO2 = predictedEnergy * gridFactor;
+        const totalCO2 = refrigerantCO2 + electricityCO2;
 
-      document.getElementById('carbonResult').innerHTML =
-        `<strong>Estimated Carbon Emission:</strong> ${totalCO2.toLocaleString(undefined, { maximumFractionDigits: 2 })} kg CO₂<br>
-         <strong>No. of AC Units:</strong> ${numAC}`;
-    } catch (err) {
-      document.getElementById('carbonResult').innerText = "⚠ Error reading Excel: " + err.message;
+        document.getElementById('carbonResult').innerHTML =
+          `<strong>Estimated Carbon Emission:</strong> ${totalCO2.toLocaleString(undefined, { maximumFractionDigits: 2 })} kg CO₂<br><strong>No. of AC Units:</strong> ${numAC}`;
+      } catch (err) {
+        document.getElementById('carbonResult').innerText = "⚠ Error reading Excel: " + err.message;
+      }
     }
-  }
-</script>
+  </script>
+</body>
+</html>
