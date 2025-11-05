@@ -64,7 +64,7 @@
     const normalize = str => str.toLowerCase().replace(/[\s\-\(\)]/g, '');
 
     // === Load Excel ===
-    fetch('energy_1.xlsx') // ensure your new file is named this
+    fetch('energy_2.xlsx') // ensure your new file is named this
       .then(response => response.arrayBuffer())
       .then(data => {
         const workbook = XLSX.read(data, { type: 'array' });
