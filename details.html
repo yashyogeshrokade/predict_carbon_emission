@@ -11,27 +11,19 @@
   <style>
     body {
       font-family: "Segoe UI", Arial, sans-serif;
-      background-image: url("photo_NAC.png");
-      background-repeat: no-repeat;
-      background-size: cover;
-      background-position: center;
-      background-attachment: fixed;
+      background-color: #f3f4f6; /* Light gray background */
       text-align: center;
       margin: 0;
       padding: 0;
-      height: 100vh;
-      overflow-y: auto;
       color: #222;
-      position: relative;
-      filter: brightness(1.15) contrast(1.1) saturate(1.15);
+      min-height: 100vh;
     }
 
     .card {
-      background: rgba(255, 255, 255, 0.9);
+      background: #fff;
       border-radius: 16px;
       padding: 40px;
-      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
-      backdrop-filter: blur(8px);
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15);
       margin-top: 40px;
       animation: fadeIn 1s ease;
     }
@@ -121,6 +113,7 @@
         const totalEnergy = Number(buildingRow[14]) || energyValues.reduce((a, b) => a + (b || 0), 0);
         const numAC = Number(buildingRow[15]) || 0;
 
+        // Energy chart
         const ctxEnergy = document.getElementById('energyChart').getContext('2d');
         new Chart(ctxEnergy, {
           type: 'bar',
@@ -145,8 +138,9 @@
         });
 
         document.getElementById('energyInfo').innerHTML =
-          `<strong>Total Energy:</strong> ${totalEnergy.toLocaleString()} kWh<br><strong>No. of AC Units:</strong> ${numAC}`;
+          `<strong>Total Energy:</strong> ${totalEnergy.toLocaleString()} kWh`;
 
+        // Carbon calculation
         const refrigerantPerAC = 2.0, leakageRate = 0.10, GWP = 2088, gridFactor = 0.75;
         const totalRefrigerant = numAC * refrigerantPerAC;
         const annualLeakage = totalRefrigerant * leakageRate;
